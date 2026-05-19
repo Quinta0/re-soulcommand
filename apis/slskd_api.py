@@ -94,18 +94,22 @@ class SlskdAPI:
         resp.raise_for_status()
         return resp.json()
 
-    def wait_for_download(self, username, filename, timeout=600, poll_interval=5):
+    def wait_for_download(self, username, filename, timeout=120, poll_interval=5):
         """Poll until the download of `filename` from `username` completes. Returns True on success."""
         deadline = time.time() + timeout
+        seen_in_api = False
+        not_found_streak = 0
         while time.time() < deadline:
             time.sleep(poll_interval)
             try:
                 transfers = self.get_user_downloads(username)
+                found_in_api = False
                 for entry in transfers if isinstance(transfers, list) else []:
                     if not isinstance(entry, dict):
                         continue
                     # Flat list format
                     if entry.get('filename') == filename:
+                        found_in_api = True
                         state = entry.get('state', '')
                         if 'Succeeded' in state:
                             return True
@@ -115,12 +119,21 @@ class SlskdAPI:
                     # Nested by directory format
                     for f in entry.get('files', []):
                         if f.get('filename') == filename:
+                            found_in_api = True
                             state = f.get('state', '')
                             if 'Succeeded' in state:
                                 return True
                             if any(x in state for x in ('Errored', 'Cancelled', 'TimedOut')):
                                 print(f"  Download ended with state: {state}")
                                 return False
+                if found_in_api:
+                    seen_in_api = True
+                    not_found_streak = 0
+                elif seen_in_api:
+                    # Transfer was previously visible but has now vanished — slskd cleaned it up after success
+                    not_found_streak += 1
+                    if not_found_streak >= 2:
+                        return True
             except Exception as e:
                 print(f"  Error polling download status: {e}")
 

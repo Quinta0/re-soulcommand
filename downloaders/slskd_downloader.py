@@ -20,17 +20,15 @@ def _find_file_in_dir(directory, username, basename, timeout=90):
     return None
 
 
-def _best_track_result(results):
-    """Return the highest-quality unlocked audio result."""
+def _ranked_track_results(results):
+    """Return all unlocked audio results sorted highest-quality first."""
     candidates = [
         r for r in results
         if is_audio_file(r['file'].get('filename', ''))
         and not r['file'].get('isLocked', False)
     ]
-    if not candidates:
-        return None
     candidates.sort(key=lambda r: score_file(r['file']), reverse=True)
-    return candidates[0]
+    return candidates
 
 
 def _best_album_folder(results):
@@ -85,49 +83,56 @@ class SlskdDownloader:
         print(f"  Searching slskd: {query}")
         results = slskd.search(query)
 
-        best = _best_track_result(results)
-        if not best:
+        candidates = _ranked_track_results(results)
+        if not candidates:
             print(f"  No downloadable audio found for {artist} - {title}")
             return None
 
-        username = best['username']
-        filename = best['file']['filename']
-        size = best['file']['size']
-        basename = os.path.basename(filename.replace('\\', '/'))
-        bitrate = best['file'].get('bitRate') or '?'
-        ext = os.path.splitext(basename)[1].upper().lstrip('.')
-        print(f"  Best: {username} / {basename} ({ext}, {bitrate} kbps)")
+        for attempt, best in enumerate(candidates[:5]):
+            username = best['username']
+            filename = best['file']['filename']
+            size = best['file']['size']
+            basename = os.path.basename(filename.replace('\\', '/'))
+            bitrate = best['file'].get('bitRate') or '?'
+            ext = os.path.splitext(basename)[1].upper().lstrip('.')
+            if attempt == 0:
+                print(f"  Best: {username} / {basename} ({ext}, {bitrate} kbps)")
+            else:
+                print(f"  Retry [{attempt}]: {username} / {basename} ({ext}, {bitrate} kbps)")
 
-        try:
-            slskd.download(username, filename, size)
-        except Exception as e:
-            print(f"  Failed to queue download: {e}")
-            return None
+            try:
+                slskd.download(username, filename, size)
+            except Exception as e:
+                print(f"  Failed to queue download: {e}")
+                continue
 
-        if not slskd.wait_for_download(username, filename):
-            print(f"  Download failed for {artist} - {title}")
-            return None
+            if not slskd.wait_for_download(username, filename):
+                print(f"  Download failed, trying next candidate...")
+                continue
 
-        local_path = _find_file_in_dir(config.SLSKD_DOWNLOAD_DIR, username, basename)
-        if not local_path:
-            print(f"  Downloaded file not found on disk for {artist} - {title}")
-            return None
+            local_path = _find_file_in_dir(config.SLSKD_DOWNLOAD_DIR, username, basename)
+            if not local_path:
+                print(f"  Downloaded file not found on disk, trying next candidate...")
+                continue
 
-        self.tagger.tag_track(
-            local_path,
-            artist,
-            title,
-            song_info.get('album', ''),
-            song_info.get('release_date', '') or '',
-            song_info.get('recording_mbid', '') or '',
-            song_info.get('source', 'ListenBrainz'),
-            is_album_recommendation=False,
-        )
+            self.tagger.tag_track(
+                local_path,
+                artist,
+                title,
+                song_info.get('album', ''),
+                song_info.get('release_date', '') or '',
+                song_info.get('recording_mbid', '') or '',
+                song_info.get('source', 'ListenBrainz'),
+                is_album_recommendation=False,
+            )
 
-        dest = os.path.join(config.TEMP_DOWNLOAD_FOLDER, basename)
-        os.makedirs(config.TEMP_DOWNLOAD_FOLDER, exist_ok=True)
-        os.rename(local_path, dest)
-        return dest
+            dest = os.path.join(config.TEMP_DOWNLOAD_FOLDER, basename)
+            os.makedirs(config.TEMP_DOWNLOAD_FOLDER, exist_ok=True)
+            os.rename(local_path, dest)
+            return dest
+
+        print(f"  All candidates exhausted for {artist} - {title}")
+        return None
 
     async def download_album(self, album_info):
         importlib.reload(config)
