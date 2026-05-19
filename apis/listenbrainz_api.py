@@ -2,11 +2,7 @@ import requests
 import time
 import os
 import asyncio
-import concurrent.futures
 import sys
-from streamrip.client import DeezerClient
-from mutagen.id3 import ID3, COMM
-from apis.deezer_api import DeezerAPI
 from config import PLAYLIST_HISTORY_FILE, FRESH_RELEASES_CACHE_DURATION
 
 class ListenBrainzAPI:
@@ -133,7 +129,7 @@ class ListenBrainzAPI:
     async def get_recording_mbid_from_track(self, artist, title):
         """Fetches recording MBID from MusicBrainz using artist and title."""
         headers = {
-            'User-Agent': 'Re-command/1.0 ( https://github.com/z-a-f/re-command )'
+            'User-Agent': 're-soulcommand/1.0 ( https://github.com/ceemoo91/re-soulcommand )'
         }
         url = f"https://musicbrainz.org/ws/2/recording/?query=artist:\"{artist}\" AND recording:\"{title}\"&fmt=json"
         try:

@@ -2,11 +2,8 @@ import pylast
 import time
 import os
 import requests
-import webbrowser
 import asyncio
-import concurrent.futures
 import hashlib
-from apis.deezer_api import DeezerAPI
 from config import LASTFM_ENABLED as GLOBAL_LASTFM_ENABLED
 
 class LastFmAPI:
@@ -244,18 +241,9 @@ class LastFmAPI:
             print("No recommendations found from Last.fm.")
             return []
 
-        # Asynchronously fetch album art in parallel
-        deezer_api = DeezerAPI()
-        tasks = [
-            deezer_api.get_deezer_track_details_from_artist_title(
-                track["artist"], track["title"]
-            )
-            for track in recommended_tracks
-        ]
-        album_details = await asyncio.gather(*tasks)
         songs = []
-        for i, track in enumerate(recommended_tracks):
-            song = {
+        for track in recommended_tracks:
+            songs.append({
                 "artist": track["artist"],
                 "title": track["title"],
                 "album": track["album"],
@@ -263,12 +251,7 @@ class LastFmAPI:
                 "album_art": None,
                 "recording_mbid": None,
                 "source": "Last.fm"
-            }
-            details = album_details[i]
-            if details:
-                song["album_art"] = details.get("album_art")
-                song["album"] = details.get("album", song["album"])
-            songs.append(song)
+            })
         return songs
 
     def love_track(self, track, artist):

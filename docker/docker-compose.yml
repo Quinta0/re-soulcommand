@@ -1,20 +1,26 @@
 services:
-  re-command:
+  re-soulcommand:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    image: ghcr.io/snapyou2/re-command:latest
-    container_name: re-command-container
+    image: re-soulcommand:latest
+    container_name: re-soulcommand-container
     ports:
       - "5000:5000"
     volumes:
       - ${MUSIC_PATH:-/home/user/Music}:/app/music
       - ${MUSIC_PATH:-/home/user/Music}/.tempfolder:/app/temp_downloads
+      - ${SLSKD_DOWNLOAD_PATH:-/home/user/slskd/downloads}:/app/slskd_downloads:ro
     environment:
       # Navidrome Configuration (empty defaults, configure via web UI)
       - RECOMMAND_ROOT_ND=${RECOMMAND_ROOT_ND:-}
       - RECOMMAND_USER_ND=${RECOMMAND_USER_ND:-}
       - RECOMMAND_PASSWORD_ND=${RECOMMAND_PASSWORD_ND:-}
+
+      # Soulseek (slskd) Configuration
+      - RECOMMAND_SLSKD_URL=${RECOMMAND_SLSKD_URL:-}
+      - RECOMMAND_SLSKD_API_KEY=${RECOMMAND_SLSKD_API_KEY:-}
+      - RECOMMAND_SLSKD_DOWNLOAD_DIR=${RECOMMAND_SLSKD_DOWNLOAD_DIR:-/app/slskd_downloads}
 
       # ListenBrainz Configuration (disabled by default)
       - RECOMMAND_LISTENBRAINZ_ENABLED=${RECOMMAND_LISTENBRAINZ_ENABLED:-False}
@@ -28,38 +34,22 @@ services:
       - RECOMMAND_LASTFM_USERNAME=${RECOMMAND_LASTFM_USERNAME:-}
       - RECOMMAND_LASTFM_SESSION_KEY=${RECOMMAND_LASTFM_SESSION_KEY:-}
 
-      # LLM Configuration (disabled by default)
-      - RECOMMAND_LLM_ENABLED=${RECOMMAND_LLM_ENABLED:-False}
-      - RECOMMAND_LLM_PROVIDER=${RECOMMAND_LLM_PROVIDER:-}
-      - RECOMMAND_LLM_API_KEY=${RECOMMAND_LLM_API_KEY:-}
-      - RECOMMAND_LLM_MODEL_NAME=${RECOMMAND_LLM_MODEL_NAME:-}
-      - RECOMMAND_LLM_BASE_URL=${RECOMMAND_LLM_BASE_URL:-}
-
-      # Deezer Configuration (empty, configurable via web UI)
-      - RECOMMAND_DEEZER_ARL=${RECOMMAND_DEEZER_ARL:-}
-
-      # Download Method (default to streamrip)
-      - RECOMMAND_DOWNLOAD_METHOD=${RECOMMAND_DOWNLOAD_METHOD:-streamrip}
-
       # Comment Tags (default values)
       - RECOMMAND_TARGET_COMMENT=${RECOMMAND_TARGET_COMMENT:-lb_recommendation}
       - RECOMMAND_LASTFM_TARGET_COMMENT=${RECOMMAND_LASTFM_TARGET_COMMENT:-lastfm_recommendation}
       - RECOMMAND_ALBUM_RECOMMENDATION_COMMENT=${RECOMMAND_ALBUM_RECOMMENDATION_COMMENT:-album_recommendation}
-      - RECOMMAND_LLM_TARGET_COMMENT=${RECOMMAND_LLM_TARGET_COMMENT:-llm_recommendation}
 
       # Additional Configuration (default values)
       - RECOMMAND_ALBUM_RECOMMENDATION_ENABLED=${RECOMMAND_ALBUM_RECOMMENDATION_ENABLED:-false}
-      - RECOMMAND_HIDE_DOWNLOAD_FROM_LINK=${RECOMMAND_HIDE_DOWNLOAD_FROM_LINK:-false}
       - RECOMMAND_HIDE_FRESH_RELEASES=${RECOMMAND_HIDE_FRESH_RELEASES:-false}
       - RECOMMAND_FRESH_RELEASES_CACHE_DURATION=${RECOMMAND_FRESH_RELEASES_CACHE_DURATION:-300}
-      - RECOMMAND_DEEZER_MAX_CONCURRENT_REQUESTS=${RECOMMAND_DEEZER_MAX_CONCURRENT_REQUESTS:-3}
 
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      - re-command-network
+      - re-soulcommand-network
 
 networks:
-  re-command-network:
+  re-soulcommand-network:
     driver: bridge

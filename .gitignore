@@ -5,3 +5,4 @@ web_ui/__pycache__
 docker/run_recommand_auto.sh
 docker/.env
 roadmap.md
+.claude
